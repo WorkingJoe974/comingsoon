@@ -13,7 +13,10 @@ TOKEN = 'MTMzOTk5NjMxNzMxMjc0OTYxMA.GpHg2v.KHEPSYfqKxaLjLXDZEk9FjE_F8-c5G04tZxnz
 CHANNEL_ID = 1339996037372317737  # Replace with your Discord channel ID
 
 intents = discord.Intents.default()
+intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
+
+check_interval = 30  # Default interval in minutes
 
 @bot.event
 async def on_ready():
@@ -63,9 +66,19 @@ async def check_stock():
 
 @bot.command(name='status')
 async def status(ctx):
-    status_message = "I am running and checking stock every 30 minutes"
+    status_message = f"I am running and checking stock every {check_interval} minute(s)"
     print(status_message)
     await ctx.send(status_message)
+    
+@bot.command(name='setinterval')
+async def setinterval(ctx, minutes: int):
+    global check_interval
+    check_interval = minutes
+    check_stock.change_interval(minutes=check_interval)
+    confirmation_message = f"Stock check interval set to {check_interval} minute(s)."
+    print(confirmation_message)
+    logging.info(confirmation_message)
+    await ctx.send(confirmation_message)
 
 @check_stock.before_loop
 async def before_check_stock():
