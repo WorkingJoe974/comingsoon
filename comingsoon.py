@@ -13,7 +13,7 @@ TOKEN = 'MTMzOTk5NjMxNzMxMjc0OTYxMA.GpHg2v.KHEPSYfqKxaLjLXDZEk9FjE_F8-c5G04tZxnz
 CHANNEL_ID = 1339996037372317737  # Replace with your Discord channel ID
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
