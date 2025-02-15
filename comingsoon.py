@@ -44,12 +44,12 @@ async def check_stock():
     channel = bot.get_channel(CHANNEL_ID)
 
     if stock_status == "Sold Out":
-        logging.info("The RTX 5080 is currently sold out.")
+        logging.info("Sold out")
     elif stock_status in ["Add to Cart", "Coming Soon", "Not Found"]:
         if stock_status == "Add to Cart":
-            message = "The RTX 5080 is available for purchase!"
+            message = "In stock"
         elif stock_status == "Coming Soon":
-            message = "The RTX 5080 is coming soon."
+            message = "Coming soon!!"
         else:
             message = "Stock status not found."
 
