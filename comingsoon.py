@@ -13,7 +13,7 @@ TOKEN = 'MTMzOTk5NjMxNzMxMjc0OTYxMA.GpHg2v.KHEPSYfqKxaLjLXDZEk9FjE_F8-c5G04tZxnz
 CHANNEL_ID = 1339996037372317737  # Replace with your Discord channel ID
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='/', intents=intents)
 
 @bot.event
 async def on_ready():
@@ -60,6 +60,12 @@ async def check_stock():
     formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
 
     print(formatted_now + " ----->", stock_status)
+
+@bot.command(name='status')
+async def status(ctx):
+    status_message = "I am running and checking stock every 30 minutes"
+    print(status_message)
+    await ctx.send(status_message)
 
 @check_stock.before_loop
 async def before_check_stock():
