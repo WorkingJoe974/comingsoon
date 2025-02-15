@@ -36,7 +36,6 @@ async def check_stock():
         parent_div = element.find_parent("div")
         if parent_div and "Sold Out" in element:
             stock_status = "Sold Out"
-            logging.info("The RTX 5080 is currently sold out.")
         elif parent_div and "Coming Soon" in element:
             stock_status = "Coming Soon"
         elif parent_div and "Add to Cart" in element:
@@ -44,7 +43,9 @@ async def check_stock():
 
     channel = bot.get_channel(CHANNEL_ID)
 
-    if stock_status in ["Add to Cart", "Coming Soon", "Not Found"]:
+    if stock_status == "Sold Out":
+        logging.info("The RTX 5080 is currently sold out.")
+    elif stock_status in ["Add to Cart", "Coming Soon", "Not Found"]:
         if stock_status == "Add to Cart":
             message = "The RTX 5080 is available for purchase!"
         elif stock_status == "Coming Soon":
