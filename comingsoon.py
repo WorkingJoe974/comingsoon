@@ -14,6 +14,9 @@ logging.basicConfig(filename='stock_check.log', level=logging.INFO,
 TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()  # Replace with your environment variable for the Discord bot token
 CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
 
+# Debug prints to verify environment variables
+print(f"TOKEN: {TOKEN}")
+print(f"CHANNEL_ID: {CHANNEL_ID}")
 
 # Check if the environment variables are set correctly
 if not TOKEN or not CHANNEL_ID:
