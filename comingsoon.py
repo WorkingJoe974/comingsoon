@@ -93,6 +93,16 @@ async def log(ctx, lines: int = 10):
         print(error_message)
         await ctx.send(error_message)
 
+@bot.command(name='clear')
+async def clear(ctx):
+    if ctx.author.guild_permissions.manage_messages:
+        await ctx.channel.purge()
+        confirmation_message = "All messages in this channel have been cleared."
+        print(confirmation_message)
+        logging.info(confirmation_message)
+    else:
+        await ctx.send("You do not have permission to manage messages.")
+
 @check_stock.before_loop
 async def before_check_stock():
     await bot.wait_until_ready()
