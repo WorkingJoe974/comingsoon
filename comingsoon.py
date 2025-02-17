@@ -6,25 +6,15 @@ import discord
 from discord.ext import tasks, commands
 import logging
 import os
-import getpass
-import platform
 
 # Set up logging
 logging.basicConfig(filename='stock_check.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Function to prompt the user for input and set environment variables if running on Windows
-def get_env_variable(var_name, prompt_text):
-    value = os.getenv(var_name)
-    if value is None and platform.system() == 'Windows':
-        value = getpass.getpass(prompt_text)
-        os.environ[var_name] = value
-    return value
 
-
-# Check if the required environment variables are set, and prompt the user if running on Windows
-TOKEN = get_env_variable('DISCORD_BOT_TOKEN', 'Please enter your Discord Bot Token: ')
-CHANNEL_ID = get_env_variable('DISCORD_CHANNEL_ID', 'Please enter your Discord Channel ID: ')
+# Check if the required environment variables are set
+TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
 
 
 if TOKEN is None or CHANNEL_ID is None:
