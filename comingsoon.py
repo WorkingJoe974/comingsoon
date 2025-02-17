@@ -10,8 +10,9 @@ import os
 logging.basicConfig(filename='stock_check.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()
-CHANNEL_ID = str(os.getenv('DISCORD_CHANNEL_ID')).strip()
+# Explicitly convert the environment variables to strings and remove whitespace
+TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()  # Replace with your environment variable for the Discord bot token
+CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
@@ -19,16 +20,27 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 check_interval = 30  # Default interval in minutes
 
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
     logging.info('Logged in as %s', bot.user)
-    check_stock.start()
+    try:
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel is None:
+            raise ValueError("Invalid CHANNEL_ID")
+        check_stock.change_interval(minutes=check_interval)
+        check_stock.start()
+    except Exception as e:
+        logging.error(f"Error with TOKEN or CHANNEL_ID: {e}")
+        print(f"Error with TOKEN or CHANNEL_ID: {e}")
+        await bot.close()
+
 
 @tasks.loop(minutes=30)
 async def check_stock():
     url = "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153"
-    headers = {"User-Agent":"Mozilla/5.0","cache-control":"max-age=0"}
+    headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, "html.parser")
 
@@ -40,6 +52,7 @@ async def check_stock():
         parent_div = element.find_parent("div")
         if parent_div and "Sold Out" in element:
             stock_status = "Sold Out"
+            logging.info("Sold out")
         elif parent_div and "Coming Soon" in element:
             stock_status = "Coming Soon"
         elif parent_div and "Add to Cart" in element:
@@ -47,16 +60,19 @@ async def check_stock():
 
     channel = bot.get_channel(CHANNEL_ID)
 
-    if stock_status == "Sold Out":
-        logging.info("Sold out")
-    elif stock_status in ["Add to Cart", "Coming Soon", "Not Found"]:
-        if stock_status == "Add to Cart":
-            message = "In stock"
-        elif stock_status == "Coming Soon":
-            message = "Coming soon!!"
-        else:
-            message = "Stock status not found."
-
+    if stock_status == "Add to Cart":
+        message = "In stock"
+        print(message)
+        logging.info(message)
+        await channel.send(message)
+    elif stock_status == "Coming Soon":
+        message = "Coming soon!!"
+        print(message)
+        logging.info(message)
+        await channel.send(message)
+    elif stock_status == "Not Found":
+        message = "Stock status not found."
+        print(message)
         logging.info(message)
         await channel.send(message)
 
@@ -65,12 +81,14 @@ async def check_stock():
 
     print(formatted_now + " ----->", stock_status)
 
+
 @bot.command(name='status')
 async def status(ctx):
     status_message = f"I am running and checking stock every {check_interval} minute(s)"
     print(status_message)
     await ctx.send(status_message)
-    
+
+
 @bot.command(name='setinterval')
 async def setinterval(ctx, minutes: int):
     global check_interval
@@ -80,6 +98,7 @@ async def setinterval(ctx, minutes: int):
     print(confirmation_message)
     logging.info(confirmation_message)
     await ctx.send(confirmation_message)
+
 
 @bot.command(name='log')
 async def log(ctx, lines: int = 10):
@@ -94,6 +113,7 @@ async def log(ctx, lines: int = 10):
         print(error_message)
         await ctx.send(error_message)
 
+
 @bot.command(name='clear')
 async def clear(ctx):
     if ctx.author.guild_permissions.manage_messages:
@@ -101,11 +121,18 @@ async def clear(ctx):
         confirmation_message = "All messages in this channel have been cleared."
         print(confirmation_message)
         logging.info(confirmation_message)
+        await ctx.send(confirmation_message)
     else:
         await ctx.send("You do not have permission to manage messages.")
+
 
 @check_stock.before_loop
 async def before_check_stock():
     await bot.wait_until_ready()
 
-bot.run(TOKEN)
+
+try:
+    bot.run(TOKEN)
+except Exception as e:
+    logging.error(f"Failed to run bot: {e}")
+    print(f"Failed to run bot: {e}")
