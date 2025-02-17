@@ -14,6 +14,11 @@ logging.basicConfig(filename='stock_check.log', level=logging.INFO,
 TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()  # Replace with your environment variable for the Discord bot token
 CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
 
+
+# Check if the environment variables are set correctly
+if not TOKEN or not CHANNEL_ID:
+    raise ValueError("DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
+
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
