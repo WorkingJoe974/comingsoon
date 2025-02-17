@@ -1,30 +1,47 @@
 from datetime import datetime
+from types import NoneType
 import requests
 from bs4 import BeautifulSoup
 import discord
 from discord.ext import tasks, commands
 import logging
 import os
+import getpass
+import platform
 
 # Set up logging
 logging.basicConfig(filename='stock_check.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Function to prompt the user for input and set environment variables if running on Windows
+def get_env_variable(var_name, prompt_text):
+    value = os.getenv(var_name)
+    if value is None and platform.system() == 'Windows':
+        value = getpass.getpass(prompt_text)
+        os.environ[var_name] = value
+    return value
+
+
+# Check if the required environment variables are set, and prompt the user if running on Windows
+TOKEN = get_env_variable('DISCORD_BOT_TOKEN', 'Please enter your Discord Bot Token: ')
+CHANNEL_ID = get_env_variable('DISCORD_CHANNEL_ID', 'Please enter your Discord Channel ID: ')
+
+
+if TOKEN is None or CHANNEL_ID is None:
+    logging.error("DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
+    print("Error: DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
+    exit(1)
+
+
 # Explicitly convert the environment variables to strings and remove whitespace
-TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()  # Replace with your environment variable for the Discord bot token
-CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
+TOKEN = TOKEN.strip()
+CHANNEL_ID = int(CHANNEL_ID.strip())
 
-# Debug prints to verify environment variables
-print(f"TOKEN: {TOKEN}")
-print(f"CHANNEL_ID: {CHANNEL_ID}")
-
-# Check if the environment variables are set correctly
-if not TOKEN or not CHANNEL_ID:
-    raise ValueError("DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 
 check_interval = 30  # Default interval in minutes
 
