@@ -10,8 +10,8 @@ import os
 logging.basicConfig(filename='stock_check.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-TOKEN = str(os.getenv('DISCORD_BOT_TOKEN'))
-CHANNEL_ID = str(os.getenv('DISCORD_CHANNEL_ID'))
+TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()
+CHANNEL_ID = str(os.getenv('DISCORD_CHANNEL_ID')).strip()
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
