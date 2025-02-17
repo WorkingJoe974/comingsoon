@@ -80,6 +80,19 @@ async def setinterval(ctx, minutes: int):
     logging.info(confirmation_message)
     await ctx.send(confirmation_message)
 
+@bot.command(name='log')
+async def log(ctx, lines: int = 10):
+    try:
+        with open('stock_check.log', 'r') as log_file:
+            log_lines = log_file.readlines()
+            last_lines = log_lines[-lines:]
+            log_message = "```\n" + "".join(last_lines) + "\n```"
+            await ctx.send(log_message)
+    except Exception as e:
+        error_message = f"Error reading log file: {e}"
+        print(error_message)
+        await ctx.send(error_message)
+
 @check_stock.before_loop
 async def before_check_stock():
     await bot.wait_until_ready()
