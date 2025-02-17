@@ -131,8 +131,12 @@ async def before_check_stock():
     await bot.wait_until_ready()
 
 
-try:
-    bot.run(TOKEN)
-except Exception as e:
-    logging.error(f"Failed to run bot: {e}")
-    print(f"Failed to run bot: {e}")
+def main():
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        logging.error(f"Failed to run bot: {e}")
+        print(f"Failed to run bot: {e}")
+
+if __name__ == '__main__':
+    main()
