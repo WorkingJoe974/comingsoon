@@ -12,7 +12,7 @@ logging.basicConfig(filename='stock_check.log', level=logging.INFO,
 
 # Explicitly convert the environment variables to strings and remove whitespace
 TOKEN = str(os.getenv('DISCORD_BOT_TOKEN')).strip()  # Replace with your environment variable for the Discord bot token
-CHANNEL_ID = str(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
+CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))  # Replace with your environment variable for the Discord channel ID
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
@@ -121,7 +121,6 @@ async def clear(ctx):
         confirmation_message = "All messages in this channel have been cleared."
         print(confirmation_message)
         logging.info(confirmation_message)
-        await ctx.send(confirmation_message)
     else:
         await ctx.send("You do not have permission to manage messages.")
 
