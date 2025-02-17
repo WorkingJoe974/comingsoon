@@ -4,13 +4,14 @@ from bs4 import BeautifulSoup
 import discord
 from discord.ext import tasks, commands
 import logging
+import os
 
 # Set up logging
 logging.basicConfig(filename='stock_check.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-TOKEN = 'MTMzOTk5NjMxNzMxMjc0OTYxMA.GpHg2v.KHEPSYfqKxaLjLXDZEk9FjE_F8-c5G04tZxnzU'  # Replace with your Discord bot token
-CHANNEL_ID = 1339996037372317737  # Replace with your Discord channel ID
+TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
