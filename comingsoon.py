@@ -29,22 +29,21 @@ def prompt_user_for_env_variable(var_name, prompt_text):
 TOKEN = prompt_user_for_env_variable('DISCORD_BOT_TOKEN', 'Please enter your Discord Bot Token: ')
 CHANNEL_ID = prompt_user_for_env_variable('DISCORD_CHANNEL_ID', 'Please enter your Discord Channel ID: ')
 
-
 if TOKEN is None or CHANNEL_ID is None:
     logging.error("DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
     print("Error: DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID environment variables must be set.")
     exit(1)
 
-
 # Explicitly convert the environment variables to strings and remove whitespace
 TOKEN = TOKEN.strip()
-CHANNEL_ID = int(CHANNEL_ID)
+CHANNEL_ID = int(CHANNEL_ID.strip())
 
+print(f"TOKEN: {TOKEN}")  # Debug print statement
+print(f"CHANNEL_ID: {CHANNEL_ID}")  # Debug print statement
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
-
 
 check_interval = 30  # Default interval in minutes
 
@@ -67,36 +66,39 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def check_stock():
-    global stock_status
-    url = "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153"
+    products = [
+        {"name": "RTX 5080",
+         "url": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153"},
+        {"name": "RTX 5090",
+         "url": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5090-32gb-gddr7-graphics-card-dark-gun-metal/6614151.p?skuId=6614151"}
+    ]
+
     headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.content, "html.parser")
 
-    # Check for "Sold Out", "Coming Soon", and "Add to Cart"
-    status_elements = soup.find_all(string=["Sold Out", "Coming Soon", "Add to Cart"])
+    for product in products:
+        response = requests.get(product["url"], headers=headers)
+        soup = BeautifulSoup(response.content, "html.parser")
 
+        # Check for "Sold Out", "Coming Soon", and "Add to Cart"
+        status_elements = soup.find_all(string=["Sold Out", "Coming Soon", "Add to Cart"])
+        stock_status = "Not Found"
+        now = datetime.now()
+        formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+        channel = bot.get_channel(CHANNEL_ID)
 
-    now = datetime.now()
-    formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+        for element in status_elements:
+            parent_div = element.find_parent("div")
+            if parent_div and "Sold Out" in element:
+                stock_status = "Sold Out"
+            elif parent_div and "Coming Soon" in element:
+                stock_status = "Coming Soon"
+                await channel.send(f"{product['name']} - {stock_status}")
+            elif parent_div and "Add to Cart" in element:
+                stock_status = "Add to Cart"
+                await channel.send(f"{product['name']} - {stock_status}")
 
-
-    channel = bot.get_channel(CHANNEL_ID)
-
-    for element in status_elements:
-        parent_div = element.find_parent("div")
-        if parent_div and "Sold Out" in element:
-            stock_status = "Sold Out"
-        elif parent_div and "Coming Soon" in element:
-            stock_status = "Coming Soon"
-            await channel.send(stock_status)
-        elif parent_div and "Add to Cart" in element:
-            stock_status = "Add to Cart"
-            await channel.send(stock_status)
-
-
-    print(formatted_now + " ----->", stock_status)
-    logging.info(formatted_now + " -----> " + stock_status)
+        print(f"{formatted_now} -----> {product['name']} - {stock_status}")
+        logging.info(f"{formatted_now} -----> {product['name']} - {stock_status}")
 
 
 @bot.command(name='status')
@@ -147,8 +149,13 @@ async def before_check_stock():
     await bot.wait_until_ready()
 
 
-try:
-    bot.run(TOKEN)
-except Exception as e:
-    logging.error(f"Failed to run bot: {e}")
-    print(f"Failed to run bot: {e}")
+def main():
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        logging.error(f"Failed to run bot: {e}")
+        print(f"Failed to run bot: {e}")
+
+
+if __name__ == '__main__':
+    main()
