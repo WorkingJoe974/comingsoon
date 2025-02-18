@@ -6,15 +6,28 @@ import discord
 from discord.ext import tasks, commands
 import logging
 import os
+import platform
 
 # Set up logging
-logging.basicConfig(filename='stock_check.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename='stock_check.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
-# Check if the required environment variables are set
-TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
+# Function to prompt the user for input and set environment variables persistently if running on Windows
+def prompt_user_for_env_variable(var_name, prompt_text):
+    value = os.getenv(var_name)
+    if value is None and platform.system() == 'Windows':
+        value = input(prompt_text)
+        os.system(f'setx {var_name} "{value}"')
+    return value
+
+
+# Check if the required environment variables are set, and prompt the user if running on Windows
+TOKEN = prompt_user_for_env_variable('DISCORD_BOT_TOKEN', 'Please enter your Discord Bot Token: ')
+CHANNEL_ID = prompt_user_for_env_variable('DISCORD_CHANNEL_ID', 'Please enter your Discord Channel ID: ')
 
 
 if TOKEN is None or CHANNEL_ID is None:
@@ -25,7 +38,7 @@ if TOKEN is None or CHANNEL_ID is None:
 
 # Explicitly convert the environment variables to strings and remove whitespace
 TOKEN = TOKEN.strip()
-CHANNEL_ID = int(CHANNEL_ID.strip())
+CHANNEL_ID = int(CHANNEL_ID)
 
 
 intents = discord.Intents.default()
@@ -54,6 +67,7 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def check_stock():
+    global stock_status
     url = "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153"
     headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
     response = requests.get(url, headers=headers)
@@ -61,40 +75,28 @@ async def check_stock():
 
     # Check for "Sold Out", "Coming Soon", and "Add to Cart"
     status_elements = soup.find_all(string=["Sold Out", "Coming Soon", "Add to Cart"])
-    stock_status = "Not Found"
+
+
+    now = datetime.now()
+    formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+    channel = bot.get_channel(CHANNEL_ID)
 
     for element in status_elements:
         parent_div = element.find_parent("div")
         if parent_div and "Sold Out" in element:
             stock_status = "Sold Out"
-            logging.info("Sold out")
         elif parent_div and "Coming Soon" in element:
             stock_status = "Coming Soon"
+            await channel.send(stock_status)
         elif parent_div and "Add to Cart" in element:
             stock_status = "Add to Cart"
+            await channel.send(stock_status)
 
-    channel = bot.get_channel(CHANNEL_ID)
-
-    if stock_status == "Add to Cart":
-        message = "In stock"
-        print(message)
-        logging.info(message)
-        await channel.send(message)
-    elif stock_status == "Coming Soon":
-        message = "Coming soon!!"
-        print(message)
-        logging.info(message)
-        await channel.send(message)
-    elif stock_status == "Not Found":
-        message = "Stock status not found."
-        print(message)
-        logging.info(message)
-        await channel.send(message)
-
-    now = datetime.now()
-    formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
 
     print(formatted_now + " ----->", stock_status)
+    logging.info(formatted_now + " -----> " + stock_status)
 
 
 @bot.command(name='status')
@@ -145,12 +147,8 @@ async def before_check_stock():
     await bot.wait_until_ready()
 
 
-def main():
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        logging.error(f"Failed to run bot: {e}")
-        print(f"Failed to run bot: {e}")
-
-if __name__ == '__main__':
-    main()
+try:
+    bot.run(TOKEN)
+except Exception as e:
+    logging.error(f"Failed to run bot: {e}")
+    print(f"Failed to run bot: {e}")
