@@ -128,7 +128,7 @@ async def setproducts(ctx, *args):
 
 @bot.command(name='status')
 async def status(ctx):
-    status_message = f"I am running and checking stock every {check_interval} minute(s)"
+    status_message = f"I am running and checking {selected_products} stock every {check_interval} minute(s)"
     print(f"{formatted_now} {status_message}")
     await ctx.send(status_message)
 
