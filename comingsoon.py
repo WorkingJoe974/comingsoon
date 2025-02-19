@@ -1,5 +1,4 @@
 from datetime import datetime
-from types import NoneType
 import requests
 from bs4 import BeautifulSoup
 import discord
@@ -41,9 +40,6 @@ if TOKEN is None or CHANNEL_ID is None:
 # Explicitly convert the environment variables to strings and remove whitespace
 TOKEN = TOKEN.strip()
 CHANNEL_ID = int(CHANNEL_ID.strip())
-
-print(f"TOKEN: {TOKEN}")  # Debug print statement
-print(f"CHANNEL_ID: {CHANNEL_ID}")  # Debug print statement
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
@@ -100,7 +96,7 @@ async def check_stock():
                 await channel.send(f"{product_name} - {stock_status}")
 
         print(f"{formatted_now} {product_name} - {stock_status}")
-        logging.info(f"{formatted_now} {product_name} - {stock_status}")
+        logging.info(f"{product_name} - {stock_status}")
 
 
 @bot.command(name='setproducts')
@@ -129,6 +125,7 @@ async def setproducts(ctx, *args):
 @bot.command(name='status')
 async def status(ctx):
     status_message = f"I am running and checking {', '.join(selected_products)} stock every {check_interval} minute(s)"
+    logging.info(status_message)
     print(f"{formatted_now} {status_message}")
     await ctx.send(status_message)
 
@@ -155,6 +152,7 @@ async def log(ctx, lines: int = 10):
     except Exception as e:
         error_message = f"Error reading log file: {e}"
         print(f"{formatted_now} {error_message}")
+        logging.info(error_message)
         await ctx.send(error_message)
 
 
@@ -166,6 +164,7 @@ async def clear(ctx):
         print(f"{formatted_now} {confirmation_message}")
         logging.info(confirmation_message)
     else:
+        logging.info("You do not have permission to manage messages")
         await ctx.send("You do not have permission to manage messages.")
 
 
