@@ -72,6 +72,10 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def check_stock():
+    global checking_stock
+    if not checking_stock:
+        return
+
     headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
 
     for product_name in selected_products:
@@ -166,6 +170,24 @@ async def clear(ctx):
     else:
         logging.info("You do not have permission to manage messages")
         await ctx.send("You do not have permission to manage messages.")
+
+@bot.command(name='pause')
+async def pause(ctx):
+    global checking_stock
+    checking_stock = False
+    confirmation_message = "Stock checking paused."
+    print(f"{formatted_now} {confirmation_message}")
+    logging.info(confirmation_message)
+    await ctx.send(confirmation_message)
+
+@bot.command(name='resume')
+async def resume(ctx):
+    global checking_stock
+    checking_stock = True
+    confirmation_message = "Stock checking resumed."
+    print(f"{formatted_now} {confirmation_message}")
+    logging.info(confirmation_message)
+    await ctx.send(confirmation_message)
 
 
 @check_stock.before_loop
