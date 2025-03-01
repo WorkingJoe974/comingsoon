@@ -157,7 +157,26 @@ async def setproducts(ctx, *args):
 
 @bot.command(name='status')
 async def status(ctx):
-    status_message = f"I am running and checking {', '.join(selected_products)} stock every {check_interval} minute(s)"
+    now = datetime.now()
+    day_of_week = now.weekday()
+    status_message = f"I am running and checking {', '.join(selected_products)} stock every {check_interval} minute(s)."
+
+    if day_of_week in [5, 6]:  # Saturday or Sunday
+        # Calculate time until midnight on Monday
+        days_until_monday = (7 - day_of_week) % 7
+        next_monday = now + timedelta(days=days_until_monday)
+        midnight_next_monday = datetime.combine(next_monday.date(), datetime.min.time())
+        time_until_restart = midnight_next_monday - now
+        hours, remainder = divmod(time_until_restart.total_seconds(), 3600)
+        minutes = remainder // 60
+
+        status_message = (
+            f"The stock check is currently disabled for the weekend.\n"
+            f"The task will restart at midnight on Monday in approximately {int(hours)} hours and {int(minutes)} minutes."
+        )
+    elif not check_stock.is_running():
+        status_message += "\n(Note: The stock check task is currently stopped but can be manually restarted or will restart automatically.)"
+
     print(f"{formatted_now} {status_message}")
     await ctx.send(status_message)
 
