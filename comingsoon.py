@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import NoneType
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +7,7 @@ from discord.ext import tasks, commands
 import logging
 import os
 import platform
+import asyncio
 
 # Set up logging
 logging.basicConfig(
@@ -42,9 +43,6 @@ if TOKEN is None or CHANNEL_ID is None:
 TOKEN = TOKEN.strip()
 CHANNEL_ID = int(CHANNEL_ID.strip())
 
-print(f"TOKEN: {TOKEN}")  # Debug print statement
-print(f"CHANNEL_ID: {CHANNEL_ID}")  # Debug print statement
-
 intents = discord.Intents.default()
 intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -58,6 +56,28 @@ products = {
 }
 
 
+@tasks.loop(hours=24)
+async def restart_task():
+    # Calculate the time difference to the next Monday at midnight
+    now = datetime.now()
+    days_until_monday = (7 - now.weekday()) % 7  # Days left until Monday
+    next_monday = now + timedelta(days=days_until_monday)
+    midnight_next_monday = datetime.combine(next_monday.date(), datetime.min.time())
+
+    # Calculate the delay in seconds
+    delay_seconds = (midnight_next_monday - now).total_seconds()
+
+    if delay_seconds > 0:
+        print(f"{formatted_now} Waiting for {delay_seconds} seconds until midnight on Monday.")
+        logging.info(f"Waiting for {delay_seconds} seconds until midnight on Monday.")
+        await asyncio.sleep(delay_seconds)
+
+    # Restart the stock check task
+    if not check_stock.is_running():
+        print(f"{formatted_now} It's midnight on Monday. Restarting the stock check task.")
+        logging.info("It's midnight on Monday. Restarting the stock check task.")
+        check_stock.start()
+
 @bot.event
 async def on_ready():
     print(f"{formatted_now} Logged in as {bot.user}")
@@ -67,7 +87,9 @@ async def on_ready():
         if channel is None:
             raise ValueError("Invalid CHANNEL_ID")
         check_stock.change_interval(minutes=check_interval)
-        check_stock.start()
+        restart_task.start()  # Start the task to monitor and restart at midnight Monday
+        if datetime.now().weekday() not in [5, 6]:
+            check_stock.start()  # Start stock check if it's a weekday
     except Exception as e:
         logging.error(f"Error with TOKEN or CHANNEL_ID: {e}")
         print(f"{formatted_now} Error with TOKEN or CHANNEL_ID: {e}")
@@ -76,6 +98,13 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def check_stock():
+    # Check if today is Saturday (5) or Sunday (6)
+    if datetime.now().weekday() in [5, 6]:
+        print(f"{formatted_now} It's the weekend. Skipping stock check.")
+        logging.info("It's the weekend. Skipping stock check.")
+        check_stock.stop()
+        return
+
     headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
 
     for product_name in selected_products:
