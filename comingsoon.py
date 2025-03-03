@@ -129,7 +129,7 @@ async def check_stock():
                 await channel.send(f"{product_name} - {stock_status}")
 
         print(f"{formatted_now} {product_name} - {stock_status}")
-        logging.info(f"{formatted_now} {product_name} - {stock_status}")
+        logging.info(f"{product_name} - {stock_status}")
 
 
 @bot.command(name='setproducts')
