@@ -66,7 +66,7 @@ async def restart_task():
     # Calculate the delay in seconds
     delay_seconds = (midnight_next_monday - now).total_seconds()
 
-    if delay_seconds > 0:
+    if delay_seconds > 0 and now.weekday() == 5:
         print(f"{formatted_now} Waiting for {delay_seconds} seconds until midnight on Monday.")
         logging.info(f"Waiting for {delay_seconds} seconds until midnight on Monday.")
         await asyncio.sleep(delay_seconds)
