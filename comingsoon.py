@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from types import NoneType
 import requests
 from bs4 import BeautifulSoup
 import discord
@@ -48,11 +47,11 @@ intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 check_interval = 30  # Default interval in minutes
-selected_products = ["RTX 5080"] # Default selected product
+selected_products = ["5080"] # Default selected product
 
 products = {
-    "RTX 5080": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153",
-    "RTX 5090": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5090-32gb-gddr7-graphics-card-dark-gun-metal/6614151.p?skuId=6614151"
+    "5080": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153",
+    "5090": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5090-32gb-gddr7-graphics-card-dark-gun-metal/6614151.p?skuId=6614151"
 }
 
 
@@ -133,22 +132,20 @@ async def check_stock():
 
 
 @bot.command(name='setproducts')
-async def setproducts(ctx, *args):
+async def setproducts(ctx, args):
     global selected_products
-    valid_products = ["RTX 5080", "RTX 5090", "both"]
+    valid_products = ["5080", "5090", "both"]
     selected_products = []
 
-    for arg in args:
-        if arg.lower() == "both":
-            selected_products = ["RTX 5080", "RTX 5090"]
-            break
-        elif arg.upper() in valid_products:
-            selected_products.append(arg.upper())
+    if args == "both":
+        selected_products = ["5080", "5090"]
+    elif args in valid_products:
+        selected_products = [args]
 
     if not selected_products:
-        logging.info("Invalid product selection. Please choose from 'RTX 5080', 'RTX 5090', or 'both'.")
-        print(f"{formatted_now} Invalid product selection. Please choose from 'RTX 5080', 'RTX 5090', or 'both'.")
-        await ctx.send("Invalid product selection. Please choose from 'RTX 5080', 'RTX 5090', or 'both'.")
+        logging.info("Invalid product selection. Please choose from '5080', '5090', or 'both'.")
+        print(f"{formatted_now} Invalid product selection. Please choose from '5080', '5090', or 'both'.")
+        await ctx.send("Invalid product selection. Please choose from '5080', '5090', or 'both'.")
     else:
         logging.info(f"Selected products for stock check: {', '.join(selected_products)}")
         print(f"{formatted_now} Selected products for stock check: {', '.join(selected_products)}")
