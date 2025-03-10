@@ -194,6 +194,21 @@ async def on_ready():
         print(message)
         await bot.close()
 
+@bot.command(name='clear')
+async def clear(ctx):
+    if ctx.author.guild_permissions.manage_messages:
+        await ctx.channel.purge()
+        confirmation_message = "All messages in this channel have been cleared."
+        logging.info(confirmation_message)
+        print(confirmation_message)
+        await ctx.send(confirmation_message)
+    else:
+        error_message = "You do not have permission to manage messages."
+        logging.warning(error_message)
+        print(error_message)
+        await ctx.send(error_message)
+
+
 @check_stock.before_loop
 async def before_check_stock():
     await bot.wait_until_ready()
