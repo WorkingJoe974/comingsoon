@@ -58,6 +58,7 @@ def time_until_next_monday():
     midnight_next_monday = datetime.combine(next_monday.date(), datetime.min.time())
     return midnight_next_monday - now
 
+
 async def restart_task():
     while True:
         now = datetime.now()
@@ -101,6 +102,7 @@ async def restart_task():
 
         await asyncio.sleep(24 * 3600)
 
+
 @tasks.loop(minutes=30)
 async def check_stock():
     if datetime.now().weekday() in [5, 6]:
@@ -143,6 +145,7 @@ async def check_stock():
         logging.info(message)
         print(message)
 
+
 @bot.command(name='status')
 async def status(ctx):
     now = datetime.now()
@@ -160,6 +163,7 @@ async def status(ctx):
 
     await ctx.send(status_message)
     print(status_message)
+
 
 @bot.event
 async def on_ready():
@@ -194,6 +198,7 @@ async def on_ready():
         print(message)
         await bot.close()
 
+
 @bot.command(name='clear')
 async def clear(ctx):
     if ctx.author.guild_permissions.manage_messages:
@@ -205,6 +210,29 @@ async def clear(ctx):
         error_message = "You do not have permission to manage messages."
         logging.warning(error_message)
         print(error_message)
+
+
+@bot.command(name='log')
+async def log(ctx, lines: int = 10):
+    try:
+        with open('stock_check.log', 'r') as log_file:
+            log_lines = log_file.readlines()
+            last_lines = log_lines[-lines:]  # Get the last N lines
+            log_message = "```\n" + "".join(last_lines) + "\n```"
+
+            if len(log_message) > 2000:  # Discord's message limit
+                await ctx.send("Log output is too long. Try requesting fewer lines.")
+            else:
+                await ctx.send(log_message)
+
+        logging.info(f"Sent last {lines} lines of the log to the channel.")
+        print(f"Sent last {lines} lines of the log to the channel.")
+
+    except Exception as e:
+        error_message = f"Error reading log file: {e}"
+        logging.error(error_message)
+        print(error_message)
+        await ctx.send(error_message)
 
 
 @check_stock.before_loop
