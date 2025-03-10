@@ -47,7 +47,7 @@ intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 check_interval = 30  # Default interval in minutes
-selected_products = ["5080"] # Default selected product
+selected_products = ["5090"] # Default selected product
 
 products = {
     "5080": "https://www.bestbuy.com/site/nvidia-geforce-rtx-5080-16gb-gddr7-graphics-card-gun-metal/6614153.p?skuId=6614153",
@@ -66,7 +66,7 @@ async def restart_task():
     # Calculate the delay in seconds
     delay_seconds = (midnight_next_monday - now).total_seconds()
 
-    if delay_seconds > 0 and now.weekday() == 5:
+    if now.weekday() in [5,6]:
         print(f"{formatted_now} Waiting for {delay_seconds} seconds until midnight on Monday.")
         logging.info(f"Waiting for {delay_seconds} seconds until midnight on Monday.")
         await asyncio.sleep(delay_seconds)
