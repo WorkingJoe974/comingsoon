@@ -7,7 +7,6 @@ import logging
 import os
 import platform
 import asyncio
-import json
 
 # Set up logging
 logging.basicConfig(
@@ -48,12 +47,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Configuration defaults
 check_interval = 30  # Default check interval (minutes)
-selected_products = ["5090"]  # Default selected product
+selected_products = ["5080"]  # Default selected product
 
 # Helper function to calculate the time remaining until midnight on Monday
 def time_until_next_monday():
     now = datetime.now()
-    days_until_monday = (7 - now.weekday()) % 7
+    days_until_monday = (7 - now.weekday()) % 7 or 7
     next_monday = now + timedelta(days=days_until_monday)
     midnight_next_monday = datetime.combine(next_monday.date(), datetime.min.time())
     return midnight_next_monday - now
@@ -106,11 +105,9 @@ async def restart_task():
 @tasks.loop(minutes=30)
 async def check_stock():
     if datetime.now().weekday() in [5, 6]:
-        message = "It's the weekend. Skipping stock check."
-        logging.info(message)
-        print(message)
-        check_stock.stop()
-        return
+        logging.info("It's the weekend. Skipping stock check.")
+        print("It's the weekend. Skipping stock check.")
+        return  # Just skip, don't stop the task
 
     headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
     channel = bot.get_channel(CHANNEL_ID)
@@ -123,9 +120,18 @@ async def check_stock():
             print(message)
             continue
 
-        response = requests.get(product_url, headers=headers)
-        soup = BeautifulSoup(response.content, "html.parser")
+        try:
+            response = requests.get(product_url, headers=headers, timeout=10)
+            response.raise_for_status()  # Raises an error if the response is bad (404, 500, etc.)
+        except requests.RequestException as e:
+            message = f"Error fetching {product_name}: {e}"
+            logging.error(message)
+            print(message)
+            await channel.send(message)
+            continue  # Skip this product and move on
 
+
+        soup = BeautifulSoup(response.content, "html.parser")
         status_elements = soup.find_all(string=["Sold Out", "Coming Soon", "Add to Cart"])
         stock_status = "Not Found"
 
@@ -140,6 +146,11 @@ async def check_stock():
                 elif "Add to Cart" in element:
                     stock_status = "Add to Cart"
                     await channel.send(f"{product_name} - {stock_status}")
+
+        if stock_status == "Not Found":
+            logging.warning(f"Could not determine stock status for {product_name}.")
+            print(f"Could not determine stock status for {product_name}.")
+            return
 
         message = f"{product_name} - {stock_status}"
         logging.info(message)
@@ -182,15 +193,7 @@ async def on_ready():
         print("Starting restart task loop.")
         asyncio.create_task(restart_task())
 
-        if datetime.now().weekday() not in [5, 6]:
-            message = "Starting stock check task since it's not the weekend."
-            logging.info(message)
-            print(message)
-            check_stock.start()
-        else:
-            message = "Stock check task will remain stopped until Monday."
-            logging.info(message)
-            print(message)
+        check_stock.start()
 
     except Exception as e:
         message = f"Error in on_ready: {e}"
@@ -233,6 +236,52 @@ async def log(ctx, lines: int = 10):
         logging.error(error_message)
         print(error_message)
         await ctx.send(error_message)
+
+@bot.command(name='setproducts')
+async def setproducts(ctx, args):
+    global selected_products
+    valid_products = ["5080", "5090", "both"]
+    selected_products = []
+
+    if args == "both":
+        selected_products = ["5080", "5090"]
+    elif args in valid_products:
+        selected_products = [args]
+    else:
+        await ctx.send("Invalid product selection. Please choose from '5080', '5090', or 'both'.")
+        return  # Exit without clearing selected_products
+
+    # Restart the task to apply new products
+    if check_stock.is_running():
+        check_stock.restart()
+    else:
+        check_stock.start()
+
+    logging.info(f"Selected products for stock check: {', '.join(selected_products)}")
+    print(f"Selected products for stock check: {', '.join(selected_products)}")
+    await ctx.send(f"Selected products for stock check: {', '.join(selected_products)}")
+
+
+@bot.command(name='setinterval')
+async def setinterval(ctx, minutes: int):
+    global check_interval
+    if minutes < 1:
+        await ctx.send("Interval must be at least 1 minute.")
+        return
+
+    check_interval = minutes
+    check_stock.change_interval(minutes=check_interval)
+
+    # Restart the task to apply new interval
+    if check_stock.is_running():
+        check_stock.restart()
+    else:
+        check_stock.start()
+
+    logging.info(f"Stock check interval updated to {check_interval} minute(s).")
+    print(f"Stock check interval updated to {check_interval} minute(s).")
+    await ctx.send(f"Stock check interval updated to {check_interval} minute(s).")
+
 
 
 @check_stock.before_loop
