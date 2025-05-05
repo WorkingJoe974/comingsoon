@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
-import requests
-from bs4 import BeautifulSoup
 import discord
 from discord.ext import tasks, commands
 import logging
 import os
 import platform
 import asyncio
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import WebDriverException, TimeoutException
+import time
 
 # Set up logging
 logging.basicConfig(
@@ -104,57 +107,61 @@ async def restart_task():
 
 @tasks.loop(minutes=30)
 async def check_stock():
-    if datetime.now().weekday() in [5, 6]:
-        logging.info("It's the weekend. Skipping stock check.")
-        print("It's the weekend. Skipping stock check.")
-        return  # Just skip, don't stop the task
-
-    headers = {"User-Agent": "Mozilla/5.0", "cache-control": "max-age=0"}
-    channel = bot.get_channel(CHANNEL_ID)
-
-    for product_name in selected_products:
-        product_url = PRODUCTS.get(product_name)
-        if not product_url:
-            message = f"Product {product_name} not found."
-            logging.error(message)
-            print(message)
-            continue
-
-        try:
-            response = requests.get(product_url, headers=headers, timeout=10)
-            response.raise_for_status()  # Raises an error if the response is bad (404, 500, etc.)
-        except requests.RequestException as e:
-            message = f"Error fetching {product_name}: {e}"
-            logging.error(message)
-            print(message)
-            await channel.send(message)
-            continue  # Skip this product and move on
-
-
-        soup = BeautifulSoup(response.content, "html.parser")
-        status_elements = soup.find_all(string=["Sold Out", "Coming Soon", "Add to Cart"])
-        stock_status = "Not Found"
-
-        for element in status_elements:
-            parent_div = element.find_parent("div")
-            if parent_div:
-                if "Sold Out" in element:
-                    stock_status = "Sold Out"
-                elif "Coming Soon" in element:
-                    stock_status = "Coming Soon"
-                    await channel.send(f"{product_name} - {stock_status}")
-                elif "Add to Cart" in element:
-                    stock_status = "Add to Cart"
-                    await channel.send(f"{product_name} - {stock_status}")
-
-        if stock_status == "Not Found":
-            logging.warning(f"Could not determine stock status for {product_name}.")
-            print(f"Could not determine stock status for {product_name}.")
+        if datetime.now().weekday() in [5, 6]:
+            logging.info("It's the weekend. Skipping stock check.")
+            print("It's the weekend. Skipping stock check.")
             return
 
-        message = f"{product_name} - {stock_status}"
-        logging.info(message)
-        print(message)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")  # Use new headless mode
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--window-size=1920,1080")
+
+        channel = bot.get_channel(CHANNEL_ID)
+
+        for product_name in selected_products:
+            product_url = PRODUCTS.get(product_name)
+            if not product_url:
+                message = f"Product {product_name} not found."
+                logging.error(message)
+                print(message)
+                continue
+
+            try:
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.set_page_load_timeout(15)
+                driver.get(product_url)
+                time.sleep(3)  # Allow time for JS to render
+
+                # Check for availability text
+                body_text = driver.page_source
+
+                if "Add to Cart" in body_text:
+                    status = "Add to Cart"
+                elif "Sold Out" in body_text:
+                    status = "Sold Out"
+                elif "Coming Soon" in body_text:
+                    status = "Coming Soon"
+                else:
+                    status = "Stock status not found"
+
+                message = f"{product_name} - {status}"
+                await channel.send(message)
+                logging.info(message)
+                print(message)
+
+            except (WebDriverException, TimeoutException) as e:
+                error_msg = f"Error loading {product_name}: {e}"
+                logging.error(error_msg)
+                print(error_msg)
+                await channel.send(error_msg)
+            finally:
+                try:
+                    driver.quit()
+                except:
+                    pass
 
 
 @bot.command(name='status')
