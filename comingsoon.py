@@ -191,7 +191,9 @@ async def check_stock():
 
             results = await asyncio.gather(*tasks_to_run)
             for result in results:
-                await channel.send(result)
+                if any(status in result for status in ["Add to Cart", "Coming Soon"]):
+                    if channel:
+                        await channel.send(result)
                 logging.info(result)
                 print(result)
 
