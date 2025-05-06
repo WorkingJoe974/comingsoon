@@ -12,6 +12,67 @@ from selenium.common.exceptions import WebDriverException, TimeoutException
 import time
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from concurrent.futures import ThreadPoolExecutor
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-infobars")
+chrome_options.add_argument("--disable-notifications")
+chrome_options.add_argument("--disable-popup-blocking")
+chrome_options.add_argument("--disable-software-rasterizer")
+chrome_options.add_argument("--disable-background-networking")
+chrome_options.add_argument("--disable-client-side-phishing-detection")
+chrome_options.add_argument(
+    "user-agent=Mozilla/5.0 (Linux; Android 8.0; Nexus 5X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36"
+)
+
+executor = ThreadPoolExecutor(max_workers=4)
+
+def check_product_stock_blocking(product_name, product_url):
+    message = ""
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_page_load_timeout(60)
+        driver.get(product_url)
+        time.sleep(3)
+
+        try:
+            button = driver.find_element(By.CLASS_NAME, "add-to-cart-button")
+            button_text = button.text.strip()
+            button_disabled = not button.is_enabled() or "btn-disabled" in button.get_attribute("class")
+        except Exception as e:
+            button_text = ""
+            button_disabled = True  # Default to disabled if we can't access the button
+            logging.warning(f"Could not extract button: {e}")
+
+        if "Add to Cart" in button_text and not button_disabled:
+            status = "Add to Cart"
+        elif "Sold Out" in button_text or button_disabled:
+            status = "Sold Out"
+        elif "Coming Soon" in button_text:
+            status = "Coming Soon"
+        else:
+            status = "Stock status not found"
+
+        message = f"{product_name} - {status}"
+
+    except Exception as e:
+        message = f"Error loading {product_name}: {e}"
+    finally:
+        try:
+            driver.quit()
+        except:
+            pass
+
+    return message
 
 # Set up logging
 logging.basicConfig(
@@ -114,57 +175,25 @@ async def check_stock():
             print("It's the weekend. Skipping stock check.")
             return
 
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--remote-debugging-port=9222")
-
         channel = bot.get_channel(CHANNEL_ID)
 
+        tasks_to_run = []
         for product_name in selected_products:
             product_url = PRODUCTS.get(product_name)
             if not product_url:
                 message = f"Product {product_name} not found."
                 logging.error(message)
                 print(message)
-                continue
+            else:
+                loop = asyncio.get_event_loop()
+                task = loop.run_in_executor(executor, check_product_stock_blocking, product_name, product_url)
+                tasks_to_run.append(task)
 
-            try:
-                service = Service(ChromeDriverManager().install())
-                driver = webdriver.Chrome(service=service, options=chrome_options)
-                driver.set_page_load_timeout(30)
-                driver.get(product_url)
-                time.sleep(3)  # Allow time for JS to render
-
-                # Check for availability text
-                body_text = driver.page_source
-
-                if "Add to Cart" in body_text:
-                    status = "Add to Cart"
-                elif "Sold Out" in body_text:
-                    status = "Sold Out"
-                elif "Coming Soon" in body_text:
-                    status = "Coming Soon"
-                else:
-                    status = "Stock status not found"
-
-                message = f"{product_name} - {status}"
-                await channel.send(message)
-                logging.info(message)
-                print(message)
-
-            except (WebDriverException, TimeoutException) as e:
-                error_msg = f"Error loading {product_name}: {e}"
-                logging.error(error_msg)
-                print(error_msg)
-                await channel.send(error_msg)
-            finally:
-                try:
-                    driver.quit()
-                except:
-                    pass
+            results = await asyncio.gather(*tasks_to_run)
+            for result in results:
+                await channel.send(result)
+                logging.info(result)
+                print(result)
 
 
 @bot.command(name='status')
