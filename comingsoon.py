@@ -134,7 +134,7 @@ async def check_stock():
             try:
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=chrome_options)
-                driver.set_page_load_timeout(15)
+                driver.set_page_load_timeout(30)
                 driver.get(product_url)
                 time.sleep(3)  # Allow time for JS to render
 
